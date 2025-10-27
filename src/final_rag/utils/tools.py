@@ -104,7 +104,7 @@ def search_context(query: str=None, user_name: str=None) -> str:
 
     # 应用层过滤：只保留分数 >= min_score 的结果
     # 由于启用了 norm_score=True，distance 已归一化到 [0, ~1.57] 范围 (arctan(∞) ≈ π/2)
-    # 阈值设为 0.7 表示中等以上相似度的结果
+    # 阈值设为 0.9 表示中等以上相似度的结果
     filtered_results = [item for item in res[0] if item.distance >= 0.9]
     logger.info(f"✅ 历史对话检索完成：找到 {len(filtered_results)} 条相关记录 (阈值: 0.9, 归一化后)")
 

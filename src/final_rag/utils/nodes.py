@@ -188,6 +188,30 @@ def first_agent_decision(state: MultidalModalRAGState):
         如果llm决定调用工具 返回带有tool_call字段的AIMessage
         如果llm决定不调用工具 返回不带有tool_call字段的AIMessage
     """
+    # 检查用户是否明确要求检索上下文
+    user_input = (state.get("input_text") or "").lower()
+    explicit_context_keywords = ["检索上下文", "检索历史", "search context", "check history", "search my context"]
+    
+    # 如果用户明确要求检索上下文，强制调用 search_context 工具
+    if any(keyword in user_input for keyword in explicit_context_keywords):
+        from langchain_core.messages import AIMessage
+        # 提取查询内容（去掉"检索上下文"等关键词后的内容）
+        query = user_input
+        for keyword in explicit_context_keywords:
+            query = query.replace(keyword, "").strip().strip("，,")
+          
+        # 构造强制的 tool_call
+        return {
+            'messages': [AIMessage(
+                content="",
+                tool_calls=[{
+                    "name": "search_context",
+                    "args": {"query": query},
+                    "id": f"forced_search_context_{hash(query)}"
+                }]
+            )]
+        }
+    
     # 1.绑定所有工具给llm（历史上下文 + 网络搜索）
     from src.final_rag.utils.tools import all_tools
     llm_with_tools = qwen3_vl_plus.bind_tools(all_tools)
