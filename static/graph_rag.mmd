@@ -24,7 +24,7 @@ graph TD;
 	first_agent_decision -.-> retrieve_database;
 	first_agent_decision -.-> search_context;
 	first_agent_decision -.-> web_search_node;
-	fourth_chatbot -.-> __end__;
+	fourth_chatbot -. &nbsp;__end__&nbsp; .-> evaluate_node;
 	fourth_chatbot -. &nbsp;tools&nbsp; .-> web_search_node;
 	human_approval_node -.-> __end__;
 	human_approval_node -.-> fourth_chatbot;

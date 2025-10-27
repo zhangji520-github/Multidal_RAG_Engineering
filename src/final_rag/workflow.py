@@ -190,7 +190,8 @@ def build_graph(checkpointer, store):
     
     # 路由7: human_approval_node 后的分支
     # - 人工批准 (approved) → END（结束流程）
-    # - 人工拒绝 (rejected) → fourth_chatbot（启动网络搜索备选方案）
+    # - 人工拒绝 (rejected) 且首次拒绝 → fourth_chatbot（启动网络搜索备选方案）
+    # - 人工拒绝 (rejected) 且已使用网络搜索 → END（避免无限循环）
     builder.add_conditional_edges(
         "human_approval_node", 
         route_after_human_approval,
@@ -202,13 +203,13 @@ def build_graph(checkpointer, store):
 
     # 路由8: fourth_chatbot 后的分支（网络搜索工具调用）
     # - LLM 返回 tool_calls → web_search_node（执行网络搜索）
-    # - LLM 不调用工具 → END（直接返回回答）
+    # - LLM 不调用工具 → evaluate_node（网络搜索结果也需要评估）
     builder.add_conditional_edges(
         "fourth_chatbot", 
         tools_condition,
         {
             "tools": "web_search_node",  # 需要搜索
-            '__end__': END                # 无需搜索
+            '__end__': "evaluate_node"   # 搜索完成后进入评估（不再直接结束）
         }
     )
     
@@ -451,8 +452,12 @@ async def execute_graph(user_input: str, session_id: str = None) -> dict:
         # 7. 判断是否需要写入 Milvus（只保存有价值的上下文）
         # 写入条件：
         # 1. 知识库检索 + 评分合格（evaluate_score >= 0.75）
-        # 2. 知识库检索 + 人工批准（human_answer == 'approved'）
-        # 3. 网络搜索返回的答案（检测 messages 中是否有 web_search 的 ToolMessage）
+        # 2. 任何答案（知识库/网络搜索）+ 人工批准（human_answer == 'approved'）
+        # 3. 网络搜索 + 评分合格（evaluate_score >= 0.75）
+        # 
+        # 不写入条件：
+        # - 任何答案被人工拒绝（human_answer == 'rejected'）
+        # - 简单问答（未经过知识库检索或网络搜索）
         should_save_to_milvus = False
         save_reason = ""
         
@@ -466,28 +471,47 @@ async def execute_graph(user_input: str, session_id: str = None) -> dict:
                 if msg.__class__.__name__ == 'ToolMessage'
             )
             
-            # 情况1: 知识库检索 + 评分合格（未经过人工审核，直接通过）
+            # 🔍 关键逻辑：
+            # - 知识库/网络搜索结果：评分 >= 0.75 自动通过并写入，< 0.75 需要人工审核
+            # - human_answer == 'approved': 人工审核通过（知识库或网络搜索评分低时）
+            # - human_answer == 'rejected': 人工审核拒绝，不写入数据库
+            
+            # 情况1: 评分合格（未经过人工审核，自动通过）
+            # 适用于：知识库检索答案、网络搜索答案（评分 >= 0.75 时都自动通过）
             if evaluate_score is not None and evaluate_score >= 0.75 and human_answer is None:
                 should_save_to_milvus = True
-                save_reason = f"知识库检索回答（评分: {evaluate_score:.3f} ≥ 0.75）"
+                if has_web_search:
+                    save_reason = f"网络搜索回答（评分: {evaluate_score:.3f} ≥ 0.75，自动通过）"
+                else:
+                    save_reason = f"知识库检索回答（评分: {evaluate_score:.3f} ≥ 0.75，自动通过）"
             
-            # 情况2: 知识库检索 + 人工批准
+            # 情况2: 网络搜索 + 评分合格 + 第一次答案被拒（特殊情况）
+            # 第一次知识库答案被拒 → 网络搜索 → 评分 >= 0.75 → 自动通过
+            # 这时 human_answer 仍是 'rejected'（第一次的状态），但网络搜索结果质量合格
+            elif has_web_search and evaluate_score is not None and evaluate_score >= 0.75 and human_answer == 'rejected':
+                should_save_to_milvus = True
+                save_reason = f"网络搜索回答（评分: {evaluate_score:.3f} ≥ 0.75，备选方案自动通过）"
+            
+            # 情况3: 人工批准（评分低但人工认可）
             elif human_answer == 'approved':
                 should_save_to_milvus = True
                 score_str = f"{evaluate_score:.3f}" if evaluate_score is not None else "N/A"
-                save_reason = f"知识库检索回答（人工批准，评分: {score_str}）"
-            
-            # 情况3: 网络搜索返回的答案
-            elif has_web_search:
-                should_save_to_milvus = True
-                if human_answer == 'rejected':
-                    save_reason = "网络搜索备选答案（人工拒绝原答案后启用）"
+                if has_web_search:
+                    save_reason = f"网络搜索回答（人工审核通过，评分: {score_str}）"
                 else:
-                    save_reason = "网络搜索回答（实时查询结果）"
+                    save_reason = f"知识库检索回答（人工审核通过，评分: {score_str}）"
+            
+            # 情况4: 被拒绝 - 不写入
+            elif human_answer == 'rejected':
+                should_save_to_milvus = False
+                if has_web_search:
+                    logger.warning("⚠️ 网络搜索结果被拒绝，不写入数据库")
+                else:
+                    logger.warning("⚠️ 知识库答案被拒绝，不写入数据库")
             
             # 执行写入
             if should_save_to_milvus:
-                logger.info(f"开始写入Milvus... 原因: {save_reason}")
+                logger.info(f"✅ 开始写入Milvus... 原因: {save_reason}")
                 asyncio.create_task(
                     get_milvus_writer().async_insert(
                         context_text=mess[-1].content,       # 保存最终答案的上下文
@@ -496,7 +520,13 @@ async def execute_graph(user_input: str, session_id: str = None) -> dict:
                     )
                 )
             else:
-                logger.info("跳过写入Milvus（简单问答，无需保存历史）")
+                # 根据不同情况给出不同的提示
+                if has_web_search and human_answer == 'rejected':
+                    logger.warning("❌ 跳过写入Milvus（网络搜索结果被拒绝，质量不达标）")
+                elif human_answer == 'rejected':
+                    logger.warning("❌ 跳过写入Milvus（答案被拒绝，质量不达标）")
+                else:
+                    logger.info("⏭️  跳过写入Milvus（简单问答或直接回答，无需保存历史）")
         
         return {
             'status': 'completed',

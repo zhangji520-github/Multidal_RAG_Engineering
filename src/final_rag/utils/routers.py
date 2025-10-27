@@ -98,10 +98,12 @@ def route_evaluate(state: MultidalModalRAGState):
 
 def route_human_answer_node(state: MultidalModalRAGState):
     """
-    路由人工审核节点，如果评估分数低于0.75，则进入人工审核节点
-    人工审核节点返回最终的响应
+    路由人工审核节点
+    
+    规则：评分 < 0.75 → 人工审核，评分 >= 0.75 → 直接通过
+    （适用于所有答案类型：知识库检索、网络搜索等）
     """
-    if state.get("evaluate_score") < 0.75:
+    if state.get("evaluate_score", 0) < 0.75:
         return "human_approval_node"
     else:
         return END
@@ -110,11 +112,26 @@ def route_after_human_approval(state: MultidalModalRAGState):
     """
     人工审核后的路由逻辑
     - 如果批准(approved)，则结束流程
-    - 如果拒绝(rejected)，则调用第四个聊天机器人（使用网络搜索）
+    - 如果拒绝(rejected)，检查是否已使用过网络搜索
+      - 首次拒绝 → 调用网络搜索（fourth_chatbot）
+      - 二次拒绝（网络搜索结果也不满意）→ 直接结束（避免无限循环）
     """
     human_answer = state.get("human_answer", "rejected")
     if human_answer == "approved":
         return END
     else:
-        return "fourth_chatbot"
+        # 检查消息历史中是否已经有网络搜索的痕迹
+        # 判断依据：是否有 web_search 工具的 ToolMessage
+        messages = state.get("messages", [])
+        has_web_search = any(
+            hasattr(msg, 'name') and msg.name == 'web_search' 
+            for msg in messages
+        )
+        
+        if has_web_search:
+            # 已经用过网络搜索了，不再重试，直接结束
+            return END
+        else:
+            # 首次拒绝，尝试网络搜索
+            return "fourth_chatbot"
 

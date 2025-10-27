@@ -87,7 +87,7 @@ def search_context(query: str=None, user_name: str=None) -> str:
         function_type=FunctionType.RERANK,
         params={
             "reranker": "weighted",
-            "weights": [1.0, 0.5],  # [dense权重, sparse权重]，dense检索权重更高
+            "weights": [0.8, 0.7],  # [dense权重, sparse权重]，dense检索权重更高
             "norm_score": True  # 启用归一化，使用arctan函数将分数归一化到相近范围
         }
     )
@@ -104,9 +104,10 @@ def search_context(query: str=None, user_name: str=None) -> str:
 
     # 应用层过滤：只保留分数 >= min_score 的结果
     # 由于启用了 norm_score=True，distance 已归一化到 [0, ~1.57] 范围 (arctan(∞) ≈ π/2)
-    # 阈值设为 0.9 表示中等以上相似度的结果
-    filtered_results = [item for item in res[0] if item.distance >= 0.9]
-    logger.info(f"✅ 历史对话检索完成：找到 {len(filtered_results)} 条相关记录 (阈值: 0.9, 归一化后)")
+    # 阈值设为 0.7：考虑到Markdown格式、emoji、空格等因素可能降低相似度
+    # 对于历史对话检索，适当放宽阈值可以提高召回率
+    filtered_results = [item for item in res[0] if item.distance >= 0.65]
+    logger.info(f"✅ 历史对话检索完成：找到 {len(filtered_results)} 条相关记录 (阈值: 0.65, 归一化后)")
 
     # 处理结果 你想要模型看到什么 context_pieces 就拿 hit 的哪个字段
     context_pieces = []
