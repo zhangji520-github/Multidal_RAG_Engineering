@@ -1,0 +1,42 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	process_input(process_input)
+	summarize_if_needed(summarize_if_needed)
+	first_agent_decision(first_agent_decision)
+	search_context(search_context)
+	second_agent_generate(second_agent_generate)
+	retrieve_database(retrieve_database)
+	third_chatbot(third_chatbot)
+	evaluate_node(evaluate_node)
+	human_approval_node(human_approval_node)
+	fourth_chatbot(fourth_chatbot)
+	web_search_node(web_search_node)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> process_input;
+	evaluate_node -.-> __end__;
+	evaluate_node -.-> human_approval_node;
+	first_agent_decision -.-> __end__;
+	first_agent_decision -.-> retrieve_database;
+	first_agent_decision -.-> search_context;
+	first_agent_decision -.-> web_search_node;
+	fourth_chatbot -.-> __end__;
+	fourth_chatbot -. &nbsp;tools&nbsp; .-> web_search_node;
+	human_approval_node -.-> __end__;
+	human_approval_node -.-> fourth_chatbot;
+	process_input --> summarize_if_needed;
+	retrieve_database --> third_chatbot;
+	search_context -.-> retrieve_database;
+	search_context -.-> second_agent_generate;
+	second_agent_generate --> evaluate_node;
+	summarize_if_needed --> first_agent_decision;
+	third_chatbot -.-> __end__;
+	third_chatbot -.-> evaluate_node;
+	web_search_node --> fourth_chatbot;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
