@@ -40,6 +40,7 @@ def process_input(state: MultidalModalRAGState, config: RunnableConfig, runtime:
     """处理用户输入
     config: RunnableConfig 包含配置信息（如 thread_id ）和追踪信息（如 tags ）的 RunnableConfig 对象 config["configurable"]["thread_id"]
     runtime: Runtime[UserContext] 包含运行时 Runtime 及其他信息（如 context 和 store ）的对象 runtime.context.user_name
+    提取文本 + 图片 更新状态 state
     """
     user_name = runtime.context.user_name  # UserContext是dataclass，直接访问属性
     last_message = state["messages"][-1]
@@ -50,7 +51,7 @@ def process_input(state: MultidalModalRAGState, config: RunnableConfig, runtime:
 
     # 检查输入类型
     if isinstance(last_message, HumanMessage):
-        if isinstance(last_message.content, list):       # 多模态消息是列表 比如 input = [{'image': 'xxxx', 'text': 'yyyy'}]
+        if isinstance(last_message.content, list):  # workflow.py 构建的消息:last_message = HumanMessage(content=[{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,/9j..."}}]) 是列表
             content = last_message.content
             for item in content:
                 # 提取文本内容

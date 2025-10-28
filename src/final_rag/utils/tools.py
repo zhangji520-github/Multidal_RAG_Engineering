@@ -87,7 +87,7 @@ def search_context(query: str=None, user_name: str=None) -> str:
         function_type=FunctionType.RERANK,
         params={
             "reranker": "weighted",
-            "weights": [0.8, 0.7],  # [dense权重, sparse权重]，dense检索权重更高
+            "weights": [0.8, 1],  # [dense权重, sparse权重]，dense检索权重更高
             "norm_score": True  # 启用归一化，使用arctan函数将分数归一化到相近范围
         }
     )
