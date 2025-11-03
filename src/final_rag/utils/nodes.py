@@ -96,27 +96,61 @@ def process_input(state: MultidalModalRAGState, config: RunnableConfig, runtime:
 
 #  自定义是为了替代：由LangGraph框架自带的ToolNode（有大模型动态传参 来调用工具） 这个很好写，主要还是tool的逻辑 
 class SearchContextToolNode:
-    """自定义类，来真正执行搜索上下文工具 通过对齐上一条AIMessage返回的Toolcall字段的信息来调用对应的工具 tools_by_name[tool_call["name"]].invoke()"""
+    """
+    自定义 ToolNode，支持 Runtime 参数注入
+    
+    功能：
+    - 执行搜索上下文工具
+    - 从 Runtime 或 State 中注入 user_name 参数（LLM 无法推理）
+    
+    优先级：
+    1. 优先从 runtime.context 获取 user_name（推荐方式）
+    2. 降级从 state["user"] 获取（兼容旧代码）
+    """
 
     def __init__(self, tools: list) -> None:
         self.tools_by_name = {tool.name: tool for tool in tools}
 
-    # inputs 就是这个 自定义 state (自定义schema) 的实例
-    def __call__(self, inputs: dict):
+    def __call__(
+        self, 
+        inputs: dict,
+        config: RunnableConfig = None,
+        runtime: Runtime[UserContext] = None  # ✅ 支持 Runtime 参数
+    ):
+        """
+        执行工具调用
+        
+        Args:
+            inputs: State 字典，包含 messages 等字段
+            config: 可选的配置对象
+            runtime: 可选的 Runtime 对象，包含 context、store 等
+        """
         messages = inputs.get("messages", [])
         if messages:
             message = messages[-1]
         else:
             raise ValueError("No message found in input")
+        
         outputs = []
         for tool_call in message.tool_calls:
-            # 使用LLM推理出的args
+            # 使用 LLM 推理出的 args
             tool_args = tool_call["args"].copy()
             
-            # 只补充LLM无法知道的user_name（从runtime context注入到state中）
+            # 🔥 注入 user_name（LLM 无法推理的参数）
             if "user_name" not in tool_args or tool_args["user_name"] is None:
-                tool_args["user_name"] = inputs.get("user")
+                # 优先级1: 从 runtime.context 获取（推荐）
+                if runtime and runtime.context:
+                    tool_args["user_name"] = runtime.context.user_name
+                    logger.debug(f"✅ 从 runtime.context 获取 user_name: {tool_args['user_name']}")
+                # 优先级2: 从 state 获取（降级方案，兼容旧代码）
+                elif "user" in inputs:
+                    tool_args["user_name"] = inputs.get("user")
+                    logger.debug(f"⚠️ 从 state 获取 user_name: {tool_args['user_name']}")
+                else:
+                    logger.warning("❌ 无法获取 user_name，使用默认值")
+                    tool_args["user_name"] = "default"
             
+            # 调用工具
             tool_result = self.tools_by_name[tool_call["name"]].invoke(tool_args)
             
             outputs.append(
@@ -126,6 +160,7 @@ class SearchContextToolNode:
                     tool_call_id=tool_call["id"],
                 )
             )
+        
         return {"messages": outputs}
 
 # 检索数据库节点
@@ -139,13 +174,15 @@ def retrieve_database(state: MultidalModalRAGState):
         # 构建文本输入数据
         input_data = [{'text': state.get("input_text")}]
         ok, dense_embedding, status, retry_after = call_dashscope_once(input_data)
-        results = m_retriever.hybrid_search(dense_embedding, state.get("input_text"), sparse_weight=0.8, dense_weight=1, limit=3)
+        # 学术论文检索优化：提高limit到5，增强sparse_weight到1.0以加强术语匹配
+        results = m_retriever.hybrid_search(dense_embedding, state.get("input_text"), sparse_weight=1.0, dense_weight=1.0, limit=5)
 
     else:
         # 构建图像输入数据
         input_data = [{'image': state.get("input_image")}]
         ok, dense_embedding, status, retry_after = call_dashscope_once(input_data)      # 图像仅支持密集向量检索的方式
-        results = m_retriever.dense_search(dense_embedding, limit=3)
+        # 图像检索也提高limit到5，增加召回率
+        results = m_retriever.dense_search(dense_embedding, limit=5)
     
     # logger.info(f"从知识数据库检索到的结果为: {results}")
 
@@ -244,7 +281,7 @@ def third_chatbot(state: MultidalModalRAGState):
     context_retrieved = state.get("context_retrieved", [])
     images_retrieved = state.get("images_retrieved", [])
 
-    # 格式化处理文本内容的上下文
+    # 格式化处理文本内容的上下文（增强学术论文元数据展示）
     count = 0
     context_pieces = []
     for hit in context_retrieved:
@@ -426,10 +463,10 @@ async def summarize_if_needed(state: MultidalModalRAGState):
     
     # 如果消息数量未超过阈值，跳过摘要生成
     if current_count <= threshold:
-        logger.info(f"✅ 消息数量未超过阈值，跳过摘要生成")
+        logger.info("✅ 消息数量未超过阈值，跳过摘要生成")
         return {"message_count": current_count}
     
-    logger.info(f"⚠️ 消息数量超过阈值，开始生成摘要...")
+    logger.info("⚠️ 消息数量超过阈值，开始生成摘要...")
     
     # 获取现有摘要
     existing_summary = state.get("summary", "")

@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 import asyncio
 import platform
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 # Windows 平台需要设置事件循环策略
 if platform.system() == 'Windows':
@@ -10,8 +11,6 @@ if platform.system() == 'Windows':
 # 添加项目根目录到 Python 路径
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 # 数据库连接字符串
 DB_URI = 'postgresql://postgres:200132ji@localhost:5432/multidal_modal_rag'

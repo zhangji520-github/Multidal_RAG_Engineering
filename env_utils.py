@@ -23,6 +23,9 @@ SILICONFLOW_BASE_URL = os.getenv("SILICONFLOW_BASE_URL")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
 
+# 小爱中转API
+XIAOAI_API_KEY = os.getenv("XIAOAI_API_KEY")
+XIAOAI_BASE_URL = os.getenv("XIAOAI_BASE_URL")
 
 ## Milvus 配置
 MILVUS_URI = "http://localhost:19530"

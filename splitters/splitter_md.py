@@ -4,8 +4,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import base64
 from PIL import Image
 import io
-from langchain_text_splitters import MarkdownHeaderTextSplitter
-from langchain_experimental.text_splitter import SemanticChunker
+from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
+# SemanticChunker 在新版本中已弃用，使用 RecursiveCharacterTextSplitter 替代
 from llm_utils import openai_embedding
 from langchain_core.documents import Document
 import re
@@ -40,10 +40,12 @@ class MarkdownDirSplitter:
             headers_to_split_on=self.headers_to_split_on
         )
 
-        # 初始化语义切割器
-        self.semantic_splitter = SemanticChunker(
-            openai_embedding, 
-            breakpoint_threshold_type="percentile"
+        # 初始化文本切割器（使用 RecursiveCharacterTextSplitter 替代 SemanticChunker）
+        self.semantic_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=200,
+            length_function=len,
+            is_separator_regex=False
         )
 
     def save_base64_to_Image(self, base64_str: str, output_path: str ) -> None:

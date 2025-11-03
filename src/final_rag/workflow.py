@@ -107,7 +107,7 @@ def build_graph(checkpointer, store):
     builder.add_node("fourth_chatbot", fourth_chatbot)
     
     # 节点11: 网络搜索工具节点（官方 ToolNode）
-    # 功能: 执行 Tavily 网络搜索工具
+    # 功能: 执行 网络搜索工具
     builder.add_node("web_search_node", ToolNode(tools=web_tools))
 
     # ==================== 添加边（工作流路由） ====================

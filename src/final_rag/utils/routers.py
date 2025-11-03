@@ -45,9 +45,25 @@ def route_after_first_agent(state: MultidalModalRAGState):
     
     # 【优先级2】技术/专业内容关键词（暗示需要查询知识库）
     domain_keywords = [
+        # AI/ML相关
         "gpt-4", "gpt4", "技术报告", "technical report", "rlhf", "reinforcement learning",
         "exam benchmark", "capability", "appendix", "实验", "benchmark",
-        "论文", "paper", "研究", "research"
+        "论文", "paper", "研究", "research",
+        
+        # 多智能体系统相关
+        "多智能体", "multi-agent", "mas", "分布式", "协同", "consensus", "一致性", 
+        "协同控制", "distributed", "cooperative",
+        
+        # 容错控制相关
+        "容错", "fault-tolerant", "主动容错", "被动容错", "故障", "failure", "补偿",
+        "fault detection", "故障检测", "诊断", "diagnosis",
+        
+        # 无人机/机器人相关
+        "无人机", "uav", "编队", "formation", "飞行器", "drone", "quadrotor", "aircraft",
+        
+        # 控制理论相关
+        "自适应", "adaptive", "鲁棒", "robust", "李雅普诺夫", "lyapunov",
+        "补偿器", "compensator", "观测器", "observer", "控制器", "controller"
     ]
     
     # ✅ 优先级1：用户明确要求检索知识库 → 直接路由到 retrieve_database

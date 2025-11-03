@@ -4,8 +4,19 @@ from env_utils import OPENAI_API_KEY, OPENAI_BASE_URL, LOCAL_BASE_URL, DEEPSEEK_
 import os
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.embeddings import DashScopeEmbeddings
+from env_utils import XIAOAI_API_KEY, XIAOAI_BASE_URL
 
 # OpenAI SDK 初始化
+xiaoai_llm = ChatOpenAI(
+    model='gpt-4.1-2025-04-14',
+    api_key=XIAOAI_API_KEY,
+    base_url=XIAOAI_BASE_URL,
+)
+xiaoai_embedding = OpenAIEmbeddings(
+    model="text-embedding-3-small",
+    api_key=XIAOAI_API_KEY,
+    base_url=XIAOAI_BASE_URL,
+)
 
 # OpenAI 模型
 llm = ChatOpenAI(
