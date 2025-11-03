@@ -1,17 +1,29 @@
 LOG_LEVEL: INFO
 HOST: 127.0.0.1
-PORT: 8000
+PORT: 8001
 ORIGINS: ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://192.168.0.136:8080']
 
-# PostgreSQL 数据库配置（用于 LangGraph Checkpointer 和 Store）
+# PostgreSQL 数据库配置
+# 注意：这里配置了两个独立的数据库
 POSTGRES:
-  DRIVER: postgresql
-  NAME: multidal_modal_rag
-  HOST: localhost
-  PORT: 5432
-  USERNAME: postgres
-  PASSWORD: 200132ji
-  URI: postgresql://postgres:200132ji@localhost:5432/multidal_modal_rag
+  # 用户管理数据库（用于 FastAPI 用户系统）
+  USER_DB:
+    DRIVER: postgresql
+    NAME: user_db
+    HOST: localhost
+    PORT: 5432
+    USERNAME: postgres
+    PASSWORD: 200132ji
+  
+  # LangGraph 数据库（用于对话状态和历史）
+  LANGGRAPH_DB:
+    DRIVER: postgresql
+    NAME: multidal_modal_rag
+    HOST: localhost
+    PORT: 5432
+    USERNAME: postgres
+    PASSWORD: 200132ji
+    URI: postgresql://postgres:200132ji@localhost:5432/multidal_modal_rag
 
 # Milvus 向量数据库配置
 MILVUS:

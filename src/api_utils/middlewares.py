@@ -28,7 +28,7 @@ async def verify_token(request: Request, call_next: Callable) -> Response:
     # 得到请求路径
     path: str = request.get('path')
     # 从白名单中匹配请求路径
-    for request_path in settings.WHITE_LIST:
+    for request_path in settings.WHITE_LIST:   # ✅ 读取 WHITE_LIST
         if re.match(request_path, path):
             return await call_next(request)  # 继续往下执行
     else:  # 请求路径不是白名单里面的

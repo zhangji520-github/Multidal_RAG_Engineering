@@ -2,6 +2,11 @@ import uvicorn
 from fastapi import FastAPI, Depends
 from starlette.staticfiles import StaticFiles
 from src.config import settings
+# 当这行代码执行时：
+# 1. Python 找到 src/config/__init__.py
+# 2. 执行里面的代码，创建 settings 对象
+# 3. Dynaconf 读取 development.yml 的所有内容
+# 4. settings 现在包含了所有配置
 from src.api_utils import handler_error, cors, middlewares
 
 from src.config.log_config import init_log
@@ -17,7 +22,7 @@ class Server:
         my_oauth2 = MyOAuth2PasswordBearer(tokenUrl='/api/auth/', schema='JWT')
         # 添加全局的依赖: 让所有的接口，都拥有接口文档的认证
         self.app = FastAPI(dependencies=[Depends(my_oauth2)])
-        # 把项目下的static目录作为静态文件的访问目录 未来可以通过http直接访问
+        # 把项目下的static目录作为静态文件的访问目录 未来可以通过http直接访问 http://localhost:8001/static/graph_rag.png
         self.app.mount('/static', StaticFiles(directory='static'), name='my_static')
 
     def init_app(self):

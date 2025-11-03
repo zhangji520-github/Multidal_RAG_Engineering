@@ -9,7 +9,7 @@ from starlette import status
 from src.api.system_mgt.user_schemas import CreateOrUpdateUserSchema, UserSchema, UserLoginRspSchema, UserLoginSchema, \
     GetUserList
 from src.config import settings
-from db.system_mgt.user_dao import UserDao
+from src.db.system_mgt.user_dao import UserDao
 from src.api_utils.dependencies import get_db
 from src.api_utils.jwt_utils import create_token
 from src.api_utils.password_hash import get_hashed_password, verify_password
@@ -39,7 +39,7 @@ def create(obj_in: CreateOrUpdateUserSchema, session: Session = Depends(get_db))
 
     # 把密码变成hash之后的密文
     obj_in.password = get_hashed_password(obj_in.password)
-
+    # 保存到数据库
     return _dao.create(session, obj_in)
 
 

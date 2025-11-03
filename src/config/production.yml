@@ -1,0 +1,56 @@
+LOG_LEVEL: WARNING
+HOST: 0.0.0.0
+PORT: 8000
+ORIGINS: ['https://your-domain.com', 'https://www.your-domain.com']
+
+# PostgreSQL 数据库配置（生产环境）
+POSTGRES:
+  # 用户管理数据库
+  USER_DB:
+    DRIVER: postgresql
+    NAME: user_management_prod
+    HOST: 10.0.0.100
+    PORT: 5432
+    USERNAME: prod_user
+    PASSWORD: CHANGE_ME_IN_ENV
+  
+  # LangGraph 数据库
+  LANGGRAPH_DB:
+    DRIVER: postgresql
+    NAME: multidal_modal_rag_prod
+    HOST: 10.0.0.100
+    PORT: 5432
+    USERNAME: prod_user
+    PASSWORD: CHANGE_ME_IN_ENV
+    URI: postgresql://prod_user:CHANGE_ME_IN_ENV@10.0.0.100:5432/multidal_modal_rag_prod
+
+# Milvus 向量数据库配置（生产环境）
+MILVUS:
+  URI: http://milvus-prod.internal:19530
+  USERNAME: admin
+  PASSWORD: CHANGE_ME_IN_ENV
+  COLLECTIONS:
+    KNOWLEDGE: multimodal_rag_prod
+    CONTEXT: multimodal_rag_context_prod
+
+# MySQL 数据库配置（生产环境）
+MYSQL:
+  DRIVER: mysql
+  NAME: production_db
+  HOST: mysql-prod.internal
+  PORT: 3306
+  USERNAME: prod_user
+  PASSWORD: CHANGE_ME_IN_ENV
+  QUERY:
+    charset: utf8mb4
+
+# JWT 配置（生产环境）
+JWT_SECRET_KEY: CHANGE_ME_IN_ENV
+ALGORITHM: HS256
+ACCESS_TOKEN_EXPIRE_MINUTES: 60
+
+# API 白名单（生产环境）
+WHITE_LIST: ['/api/login', '/api/register', '/static', '/health']
+
+# 默认密码（生产环境禁用）
+DEFAULT_PASSWORD: null

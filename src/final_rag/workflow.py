@@ -46,8 +46,9 @@ from utils.save_context import get_milvus_writer  # noqa: E402
 import logging  # noqa: E402
 logger = logging.getLogger(__name__)
 
-# 在生产环境中，请使用数据库支持的检查点机制：
-DB_URI = 'postgresql://postgres:200132ji@localhost:5432/multidal_modal_rag'
+# 从配置文件读取 LangGraph 数据库 URI
+from src.config import settings
+DB_URI = settings.POSTGRES.LANGGRAPH_DB.URI
 
 
 def build_graph(checkpointer, store):

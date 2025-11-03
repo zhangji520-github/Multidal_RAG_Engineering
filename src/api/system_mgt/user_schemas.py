@@ -11,7 +11,7 @@ class BaseUserSchema(BaseModel):
     username: str = Field(description='用户名', default=None)
     # 为什么没有密码属性： 查询某一个用户信息---> json里面要不要包含密码？
     phone: Union[str, None] = Field(description='用户手机号', default=None)
-    email: Union[str, None] = Field(description='用户游戏', default=None)
+    email: Union[str, None] = Field(description='用户邮箱', default=None)
     real_name: Union[str, None] = Field(description='用户真实姓名', default=None)
     icon: Union[str, None] = Field(description='用户头像', default=None)
     dept_id: Union[int, None] = Field(description='所属部门ID', default=None)
